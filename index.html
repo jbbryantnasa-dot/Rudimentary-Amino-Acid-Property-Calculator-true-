@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Amino Acid Sequence Property Calculator</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <p class="report-label">Technical Report</p>
+      <h1>Amino Acid Sequence Property Calculator</h1>
+      <p class="tagline">Biochemical Analysis of Protein Sequences</p>
+    </div>
+  </header>
+
+  <main>
+
+    <section id="panel-protein" class="panel active">
+
+      <div class="card">
+        <h2>1. Protein Sequence Input</h2>
+        <p class="hint">Enter a protein sequence using standard single-letter amino acid codes (e.g. M, A, G, K, R, ...).</p>
+        <textarea id="protein-input" placeholder="e.g. MAGKVLSLLVLAFVSGSQAE..." rows="4"></textarea>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="runProtein()">Analyze Protein</button>
+          <button class="btn-ghost" onclick="clearProtein()">Clear</button>
+        </div>
+      </div>
+
+      <div id="protein-error" class="error-box hidden"></div>
+
+      <div id="protein-results" class="results hidden">
+        <h3 class="results-title">2. Results</h3>
+
+        <div class="stat-grid four">
+          <div class="stat"><span class="stat-label">Length</span><span class="stat-value" id="p-length">—</span></div>
+          <div class="stat"><span class="stat-label">Molecular Weight</span><span class="stat-value" id="p-mw">—</span></div>
+          <div class="stat"><span class="stat-label">Isoelectric Point (pI)</span><span class="stat-value" id="p-pi">—</span></div>
+          <div class="stat"><span class="stat-label">Net Charge at pH 7</span><span class="stat-value" id="p-charge">—</span></div>
+        </div>
+
+        <div class="charge-row">
+          <span class="charge-badge pos">Positive residues (K, R, H): <span class="charge-count" id="p-pos">—</span></span>
+          <span class="charge-badge neg">Negative residues (D, E): <span class="charge-count" id="p-neg">—</span></span>
+        </div>
+
+        <div class="hydro-block">
+          <label>Hydrophobicity — Kyte-Doolittle Scale</label>
+          <div class="hydro-score">
+            <span id="p-hydro-val">—</span>
+            <span id="p-hydro-label" class="hydro-label"></span>
+          </div>
+          <div class="hydro-bar-bg">
+            <div id="p-hydro-bar" class="hydro-bar"></div>
+          </div>
+          <div class="hydro-axis">
+            <span>−4.5 (hydrophilic)</span><span>0</span><span>+4.5 (hydrophobic)</span>
+          </div>
+        </div>
+
+        <div class="composition-section">
+          <label>Amino Acid Composition</label>
+          <div id="p-composition" class="composition-grid"></div>
+        </div>
+      </div>
+
+      <!-- SCIENCE EXPLAINER -->
+      <div class="explainer">
+        <h3>3. Methodology and Scientific Background</h3>
+
+        <!-- MOLECULAR WEIGHT -->
+        <div class="explainer-section">
+          <h4>3.1 Molecular Weight</h4>
+          <p>Amino acid masses can be stored in two ways: as free amino acid weights (the standalone molecule, including a full H and OH group) or as residue weights (the free weight minus one water, representing the amino acid after it has already donated H₂O to form a peptide bond). This calculator uses residue weights, derived from atomic formulas using IUPAC 2021 atomic weights. To recover the final peptide mass, one water molecule is added back for the free N-terminal H and C-terminal OH that cap the finished chain:</p>
+          <div class="formula">MW = Σ(residue weights) + 18.015 g/mol</div>
+          <p>Each peptide bond is formed by a condensation reaction — the carboxyl group of one amino acid reacts with the amino group of the next, releasing one water molecule (H₂O = 18.015 g/mol). For n residues there are n−1 such bonds, and since residue weights already account for this loss, only one water needs to be added back at the end to account for the terminal groups.</p>
+        </div>
+
+        <!-- ISOELECTRIC POINT -->
+        <div class="explainer-section">
+          <h4>3.2 Isoelectric Point (pI) and Net Charge</h4>
+
+          <p>Every amino acid contains ionisable groups — chemical groups that gain or lose a proton (H⁺) depending on the pH of the surrounding solution. The isoelectric point (pI) is the specific pH at which a protein's total positive and negative charges exactly cancel out, leaving it with a net charge of zero.</p>
+
+          <p>Understanding which groups are ionisable and when they change state is the foundation of this calculation:</p>
+          <ul>
+            <li>N-terminus (pKa ≈ 8.0): The free amino group (–NH₂) at the start of every protein chain gains a proton at low pH to become –NH₃⁺, contributing +1 charge. Above pH 8.0 it loses that proton and becomes neutral.</li>
+            <li>C-terminus (pKa ≈ 3.1): The free carboxyl group (–COOH) at the end of the chain loses a proton above pH 3.1 to become –COO⁻, contributing −1 charge.</li>
+            <li>Acidic side chains — Asp (D, pKa 3.9), Glu (E, pKa 4.1): These carboxylate groups are negatively charged at physiological pH. A protein rich in Asp and Glu carries significant negative charge at pH 7, pulling the pI toward acidic values.</li>
+            <li>Basic side chains — Lys (K, pKa 10.5), Arg (R, pKa 12.0), His (H, pKa 6.0): These are positively charged below their pKa. Lysine and Arginine remain fully positive at physiological pH. Histidine, with a pKa near neutrality, is partially charged at pH 7 — making it biochemically unique and important in enzyme active sites. A protein rich in K, R, and H will have a high pI.</li>
+            <li>Other ionisable side chains — Cys (C, pKa 8.3), Tyr (Y, pKa 10.1): These contribute negative charge only at higher pH values and have a smaller effect at physiological pH.</li>
+          </ul>
+
+          <p>The charge contribution of each group at any given pH is calculated using the Henderson-Hasselbalch equation, which describes the relationship between pH, pKa, and the fraction of a group in its charged form:</p>
+          <div class="formula">Basic groups (N-terminus, K, R, H) — positively charged below pKa:<br>charge contribution = +1 / (1 + 10^(pH − pKa))</div>
+          <div class="formula">Acidic groups (C-terminus, D, E, C, Y) — negatively charged above pKa:<br>charge contribution = −1 / (1 + 10^(pKa − pH))</div>
+          <p>When pH equals the pKa of a group, exactly half of those groups are in the charged form — the contribution is ±0.5. Far below the pKa, basic groups are fully positive (+1.0); far above, they are fully neutral (0). The opposite holds for acidic groups. The net charge of the whole protein is the sum of all individual contributions at a given pH.</p>
+
+          <p>The pI is found computationally by binary search — starting at pH 7, then repeatedly halving the search range (narrowing in on where net charge = 0) until the answer converges to within 0.0001. This takes under 50 iterations regardless of sequence length.</p>
+
+          <p>Real-world interpretation: The pI has direct practical consequences in the lab. At pH = pI, a protein carries no net charge and does not migrate in an electric field — this is the basis of isoelectric focusing (IEF), used to separate proteins by pI in 2D gel electrophoresis. Proteins also tend to be least soluble at their pI, because without surface charge there is no electrostatic repulsion between molecules, allowing them to aggregate and precipitate. This is exploited industrially — casein is purified from milk by adjusting pH to its pI (~4.6), causing it to crash out of solution. Far from the pI, a protein carries net charge and remains soluble.</p>
+
+          <p>Limitation: These pKa values are measured in free amino acids in dilute aqueous solution. Inside a folded protein, the local electrostatic environment, nearby charged residues, buried hydrophobic regions, and salt concentration all shift the effective pKa of individual residues — sometimes by several pH units. The calculated pI is therefore a theoretical estimate based on primary sequence only, not a prediction of experimental behaviour in a specific buffer or ionic condition.</p>
+        </div>
+
+        <!-- HYDROPHOBICITY -->
+        <div class="explainer-section">
+          <h4>3.3 Hydrophobicity (Kyte-Doolittle Scale)</h4>
+
+          <p>Hydrophobicity refers to the tendency of a molecule or chemical group to repel water and associate with nonpolar (oily) environments. In proteins, hydrophobicity is one of the primary thermodynamic driving forces of folding — hydrophobic residues are energetically unfavourable when exposed to water, so they migrate to the interior of the protein during folding, forming a tightly packed hydrophobic core. This is known as the hydrophobic effect and is the dominant force that gives proteins their compact, stable 3D shape.</p>
+
+          <p>The Kyte-Doolittle scale, published in 1982 by Jack Kyte and Russell Doolittle, is the most widely used hydrophobicity scale in bioinformatics. Each of the 20 standard amino acids was assigned a value between −4.5 and +4.5 based on experimental measurements of how strongly each residue partitions between water and a nonpolar organic solvent. The more positive the value, the more hydrophobic the residue:</p>
+          <ul>
+            <li>Most hydrophobic: Isoleucine (I, +4.5), Valine (V, +4.2), Leucine (L, +3.8) — aliphatic, nonpolar side chains that strongly prefer the protein interior or lipid bilayer environments.</li>
+            <li>Moderately hydrophobic: Phenylalanine (F, +2.8), Methionine (M, +1.9), Alanine (A, +1.8) — common in membrane-adjacent regions or buried in globular proteins.</li>
+            <li>Near neutral: Glycine (G, −0.4), Threonine (T, −0.7), Serine (S, −0.8) — small or weakly polar, found in both interior and surface positions.</li>
+            <li>Most hydrophilic: Arginine (R, −4.5), Lysine (K, −3.9), Aspartate (D, −3.5), Glutamate (E, −3.5) — charged residues that strongly prefer the aqueous, solvent-exposed surface of a protein.</li>
+          </ul>
+
+          <p>This calculator computes the GRAVY score (Grand Average of Hydropathicity) — the arithmetic mean of all KD scores across the full sequence:</p>
+          <div class="formula">GRAVY = Σ(Kyte-Doolittle score per residue) / n</div>
+          <p>A positive GRAVY score indicates an overall hydrophobic protein, likely a membrane protein or one that contains transmembrane helices. A negative GRAVY score indicates a hydrophilic protein, likely soluble in the cytoplasm or extracellular fluid.</p>
+
+          <p>The sliding window approach — not implemented here but important in practice — applies the KD scale in a moving window of typically 9–19 residues along the sequence. Peaks above a threshold of +1.6 in the resulting plot predict transmembrane helices: segments of the protein that span a lipid bilayer. This was the original purpose of the Kyte-Doolittle paper, and it remains the conceptual basis for modern transmembrane helix predictors such as TMHMM and Phobius.</p>
+
+          <p>Real-world interpretation: The GRAVY score is a useful first filter when designing or expressing a protein. If a recombinant protein ends up in inclusion bodies (insoluble aggregates) after expression in E. coli, a strongly positive GRAVY score is a warning sign that could have been anticipated — the protein is inherently hydrophobic and poorly suited to the aqueous bacterial cytoplasm. Adding a solubility tag (such as MBP or SUMO) or switching to a membrane-mimetic expression system may be necessary. In drug development, hydrophobicity also governs membrane permeability, oral bioavailability, and binding affinity to hydrophobic pockets in target proteins — making GRAVY a routinely checked parameter in early-stage compound screening.</p>
+
+          <p>Limitation: The GRAVY score treats every residue as equally solvent-exposed, which is only true for a fully unfolded chain. In a folded protein, hydrophobic residues are buried in the core and hydrophilic ones face the surface — so the mean KD score of the whole sequence does not reflect the actual solvent exposure of individual residues. For a more accurate picture, per-residue solvent accessibility must be calculated from 3D structural data (e.g. from a PDB file), which is beyond the scope of a sequence-only tool.</p>
+        </div>
+
+        <!-- LIMITATIONS -->
+        <div class="explainer-section">
+          <h4>3.4 Limitations of This Calculator</h4>
+          <p>All calculations here are based solely on the primary sequence — a perfectly linear, unmodified chain. This means the following real-world factors are not accounted for:</p>
+          <ul>
+            <li>Post-translational modifications — phosphorylation, glycosylation, acetylation, and ubiquitination all alter MW and charge substantially.</li>
+            <li>Disulfide bonds — each S–S bond loses 2 H atoms (2.02 Da) and changes the oxidation state of cysteine residues.</li>
+            <li>3D folding — buried residues are shielded from solvent, shifting their effective pKa and completely altering solubility predictions.</li>
+            <li>Environmental pKa shifts — salt concentration, pH buffering agents, and neighbouring charged residues all perturb the static pKa values used here.</li>
+          </ul>
+          <p>This tool is suited to basic theoretical modelling and education. For research-grade analysis use ExPASy ProtParam, BioPython's ProteinAnalysis module, or equivalent validated tools.</p>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Amino Acid Sequence Property Calculator — Built with Python and Flask — For Educational Use</p>
+  </footer>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
